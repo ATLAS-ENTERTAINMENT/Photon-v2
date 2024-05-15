@@ -193,6 +193,7 @@ function ENT:InitializeShared()
 	self.Props = {}
 	self.SubMaterials = {}
 	self.EquipmentProperties = {}
+	self.Bones = {}
 
 	self.ComponentArray = {}
 	self.PropArray = {}
@@ -240,6 +241,10 @@ function ENT:OnMeshCachePurge()
 end
 
 function ENT:AttemptComponentReload( id )
+	if ( self.PerformedSoftReload ) then
+		-- This is to prevent soft-reload changes from being reverted by a component reload.
+		self:HardReload()
+	end
 	local success, code = pcall( self.OnComponentReloaded, self, id )
 	if ( not success ) then 
 		warn( "ERROR in [%s]: \n\t\t\t[%s]", id, code )
@@ -491,6 +496,7 @@ function ENT:HardReload()
 	end
 	print( "Controller performing HARD reload..." )
 	self.DoHardReload = false
+	self.PerformedSoftReload = false
 	self:SetupProfile()
 end
 
@@ -512,6 +518,18 @@ function ENT:SoftEquipmentReload()
 	end
 	
 	self:SetSchema( profile.Schema )
+
+	self.PerformedSoftReload = true
+
+	if ( SERVER ) then
+		if ( IsValid( self:GetParent() ) ) then
+			self:GetParent():PhysWake()
+		end
+	end
+	
+	for id, data in pairs( self.Bones ) do
+		self:SetupBone( id, profile.Equipment.Bones[id] )
+	end
 	-- for id, bodyGroupData in pairs( self.Equipment.BodyGroups ) do
 	-- 	self:SetupBodyGroup( id )
 	-- end
@@ -695,6 +713,27 @@ function ENT:SetupEquipmentProperties( id )
 	if ( data.Color ) then self:GetParent():SetColor( data.Color ) end
 end
 
+function ENT:SetupBone( id, data )
+	if CLIENT then return end
+	data = data or self.Equipment.Bones[id]
+	local parent = self:GetComponentParent()
+	if ( not IsValid( parent ) ) then return end
+	-- printf( "Setting up bone [%s]", id )
+	-- printf( "Searching for bone [%s]", tostring( data.Bone ) )
+	local bone
+	if ( isstring( data.Bone ) ) then
+		bone = parent:LookUpBoneOrError( data.Bone )
+	else
+		bone = data.Bone
+	end
+	local scale = data.Scale
+	if ( isnumber( scale ) ) then scale = Vector( scale, scale, scale ) end
+	parent:ManipulateBoneScale( bone, scale )
+	parent:ManipulateBoneAngles( bone, data.Angles )
+	parent:ManipulateBonePosition( bone, data.Position )
+	self.Bones[id] = data
+end
+
 function ENT:SetupComponent( id )
 	self.AttemptingComponentSetup = true
 	local data = self.Equipment.Components[id]
@@ -800,6 +839,12 @@ function ENT:RemoveAllSubMaterials()
 	end
 end
 
+function ENT:ResetAllBones()
+	for id, boneData in pairs( self.Bones ) do
+		self:ResetBoneByIndex( id )
+	end
+end
+
 function ENT:RemoveEquipmentComponentByIndex( index )
 	-- printf("Controller is removing equipment ID [%s]", index)
 	if ( not self.Components[index] ) then return end
@@ -833,6 +878,23 @@ function ENT:RemoveSubMaterialByIndex( index )
 	self.SubMaterials[index] = nil
 end
 
+function ENT:ResetBoneByIndex( index )
+	if ( CLIENT ) then return end
+	local parent = self:GetComponentParent()
+	if ( not IsValid( parent ) ) then return end
+	if ( self.Bones[index] ) then
+		local bone = self.Bones[index].Bone
+		if ( isstring( bone ) ) then
+			bone = parent:LookUpBoneOrError( bone )
+		else
+			bone = data.Bone
+		end
+		parent:ManipulateBoneScale( bone, Vector( 1, 1, 1 ) )
+		parent:ManipulateBoneAngles( bone, Angle( 0, 0, 0 ) )
+		parent:ManipulateBonePosition( bone, Vector( 0, 0, 0 ) )
+	end
+end
+
 ---@param equipmentTable PhotonEquipmentTable
 function ENT:AddEquipment( equipmentTable )
 	if ( not equipmentTable ) then return end
@@ -862,6 +924,10 @@ function ENT:AddEquipment( equipmentTable )
 	
 	for i=1, #equipmentTable.Properties do
 		self:SetupEquipmentProperties( equipmentTable.Properties[i] )
+	end
+
+	for i=1, #equipmentTable.Bones do
+		self:SetupBone( equipmentTable.Bones[i] )
 	end
 
 	self:UpdateComponentPendingParents()
@@ -938,6 +1004,7 @@ function ENT:SetupProfile( name, isReload )
 	self:RemoveAllComponents()
 	self:RemoveAllProps()
 	self:RemoveAllSubMaterials()
+	self:ResetAllBones()
 
 	if ( profile.EngineIdleEnabled and self:GetParent():IsVehicle() ) then
 		self.EngineIdleEnabled = profile.EngineIdleEnabled
@@ -981,6 +1048,7 @@ function ENT:SetupProfile( name, isReload )
 
 	-- This block is for static equipment which is technically
 	-- supported but also deprecated and should be removed.
+	-- ????????????
 	if ( profile.EquipmentSelections ) then
 		self:SetupSelections()
 	end
@@ -993,6 +1061,12 @@ function ENT:SetupProfile( name, isReload )
 
 	self:ApplySubMaterials( self.CurrentProfile.SubMaterials )
 	self:RefreshParentMaterialsOnNextFrame()
+	
+	if ( SERVER ) then
+		if ( IsValid( self:GetParent() ) ) then
+			self:GetParent():PhysWake()
+		end
+	end
 end
 
 function ENT:SetSchema( schema )

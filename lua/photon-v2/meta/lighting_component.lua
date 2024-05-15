@@ -502,7 +502,7 @@ function Component.New( name, data )
 				end
 
 				if (not segment) then
-					error( string.format("Invalid segment: '%s'", segmentName) )
+					error( string.format( "Invalid segment: '%s'", segmentName ) )
 				end
 
 				-- PHASING
@@ -514,6 +514,12 @@ function Component.New( name, data )
 					if ( component.Segments[segmentName].Sequences[newSequenceName] or ( isnumber( phase ) ) ) then
 						sequenceName = newSequenceName
 					else
+						if ( string.find( phase, ":" ) ) then
+							local phaseName, phaseDegrees = Photon2.Util.ParseSequenceName( phase )
+							if ( phaseName and isnumber( phaseDegrees ) and component.Segments[segmentName].Sequences[sequenceName .. ":" .. phaseName]) then
+								sequenceName = newSequenceName
+							end
+						end
 						-- print( "Phase NOT found." )
 					end
 				end
@@ -586,6 +592,8 @@ function Component:Initialize( ent, controller, uiMode )
 	for name, segment in pairs(self.Segments) do
 		component.Segments[name] = segment:Initialize( component )
 	end
+
+	hook.Run( "Photon2:ComponentCreated", component, controller )
 
 	return component
 end

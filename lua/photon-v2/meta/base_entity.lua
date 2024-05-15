@@ -344,6 +344,7 @@ function ENT:CreateClientside( controller )
 	local ent = self:Initialize( ents.CreateClientside( "photon_entity" ) --[[@as photon_entity]], controller )
 	PHOTON2_ENTITY.RenderGroup = nil
 	ent:Setup()
+	hook.Run( "Photon2:EntityCreated", ent, controller )
 	return ent
 end
 
@@ -362,6 +363,7 @@ end
 ---@param controller PhotonController
 function ENT:CreateOn( ent, controller )
 	local ent = self:Initialize( ent, controller )
+	hook.Run( "Photon2:VirtualEntityCreated", ent, controller )
 	return ent
 end
 
@@ -391,7 +393,8 @@ ENT.PropertyFunctionMap = {
 	["BodyGroups"] = "UpdateAndApplyBodyGroups",
 	["PoseParameters"] = "UpdateAndApplyPoseParameters",
 	["Bones"] = "UpdateAndApplyStaticBoneData",
-	["RenderMode"] = "SetRenderMode"
+	["RenderMode"] = "SetRenderMode",
+	["Color"] = "SetColor"
 }
 
 ENT.PropertiesUpdatedOnSoftUpdate = {
@@ -403,7 +406,8 @@ ENT.PropertiesUpdatedOnSoftUpdate = {
 	["PoseParameters"] = true,
 	["FollowBone"] = true,
 	["Bones"] = true,
-	["RenderMode"] = true
+	["RenderMode"] = true,
+	["Color"] = true
 }
 
 function ENT:FollowParentBone( bone )

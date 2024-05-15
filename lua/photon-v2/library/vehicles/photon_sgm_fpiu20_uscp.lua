@@ -3,6 +3,7 @@ local VEHICLE = Photon2.LibraryVehicle()
 
 VEHICLE.Title 		= "U.S. Capitol Police - Ford Police Interceptor (2020)"
 VEHICLE.Vehicle		= "20fpiu_new_sgm"
+-- NOTE: "Photon 2" is a protected category!
 VEHICLE.Category 	= "Photon 2"
 VEHICLE.Author		= "Schmal"
 
@@ -300,6 +301,7 @@ VEHICLE.Equipment = {
 				Option = "Siren Prototype",
 				Components = {
 					{
+						-- soundoff siren speaker?
 						Component = "photon_sos_siren",
 						Model = "models/sentry/props/whelensa315p_mounta.mdl",
 						Position = Vector(-11, 113, 39.5),
@@ -327,13 +329,21 @@ VEHICLE.Equipment = {
 							[11] = { Vector( 1, 0, 0 ), Angle( 0, 0, 0 ) },
 							[10] = { Vector( -1, 0, 0 ), Angle( 0, 0, 0 ) },
 						},
+						-- Phase = "A:180",
 						Inputs = {
 							["Emergency.Warning"] = {
 								["MODE3"] = {
 									Full = "TRIP_MODIFIED",
 									Takedown = "TRI_FLASH",
+									Alley_Left = "ALT",
+									Alley_Right = "ALT",
 								},
+								-- ["MODE2"] = { Test = "PHASE" },
 								["MODE2"] = { Full = "QUAD" },
+								["MODE1"] = {
+									Full = "QUAD",
+									Cut = "FRONT"
+								}
 							},
 							["Virtual.WarningSiren"] = { ["T1"] = {}, ["T2"] = {}, ["T3"] = {}, ["T4"] = {} },
 							["Virtual.ParkedWarning"] = { ["MODE3"] = {} },
@@ -392,7 +402,14 @@ VEHICLE.Equipment = {
 						RenderGroup = RENDERGROUP_OPAQUE,
 						Scale = 0.9,
 						Inputs = {
-							["Emergency.Warning"] = { ["MODE3"] = "QUAD_FLASH" }
+							["Emergency.Warning"] = { 
+								["MODE3"] = "QUAD_FLASH",
+								["MODE1"] = {}
+							},
+							["Emergency.SceneForward"] = { 
+								["ON"] = { Takedown = "CHEAP" },
+								["FLOOD"] = { Flood = "CHEAP" } 
+							}
 						}
 					},
 					{
