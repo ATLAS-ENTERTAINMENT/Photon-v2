@@ -5,7 +5,6 @@ local sequence = Photon2.SequenceBuilder.New
 COMPONENT.Author = "Photon"
 
 COMPONENT.Credits = {
-	Model = "OfficerFive0",
 	Code = "Schmal"
 }
 
